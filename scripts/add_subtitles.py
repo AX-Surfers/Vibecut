@@ -621,6 +621,14 @@ def save_srt(segments: list[dict], out_path: Path):
 def create_project(video_path: Path, segments: list[dict], project_name: str) -> Path:
     project_dir = CAPCUT_PROJECTS / project_name
 
+    # ── 2-0. 기존 프로젝트 자동 백업 (덮어쓰기 안전장치) ───────────────
+    if project_dir.exists():
+        try:
+            from _lib_backup import backup_project_json
+            backup_project_json(project_dir, tag="add_subtitles")
+        except Exception as e:
+            print(f"  ⚠ 백업 건너뜀: {e}")
+
     # ── 2-1. 기존 프로젝트 삭제 후 템플릿 통째로 복사 ──────────────────
     # 이 방법만이 CapCut이 요구하는 수십 개 필수 파일을 모두 포함할 수 있음
     # (직접 JSON 조립 시 attachment_editing.json, draft.extra 등 누락 → 열리지 않음)

@@ -294,7 +294,14 @@ def update_draft(draft: dict, new_segments: list, new_materials: dict,
 
 
 def write_4_files(project_dir: Path, timeline_uuid: str, updated_draft: dict):
-    """4개 파일 모두 동일하게 저장"""
+    """4개 파일 모두 동일하게 저장 (수정 전 자동 백업)"""
+    # 덮어쓰기 전 자동 백업
+    try:
+        from _lib_backup import backup_project_json
+        backup_project_json(project_dir, tag="capcut_editor")
+    except Exception as e:
+        print(f"  ⚠ 백업 건너뜀: {e}")
+
     content = json.dumps(updated_draft, ensure_ascii=False, separators=(',', ':'))
 
     paths = [

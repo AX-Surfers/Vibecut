@@ -252,6 +252,15 @@ def create_slideshow(
 
     # ── 1. 템플릿 복사 + UUID 갱신 ──────────────────────────────────────────────
     project_dir = CAPCUT_PROJECTS / project_name
+
+    # 기존 프로젝트 자동 백업 (덮어쓰기 안전장치)
+    if project_dir.exists():
+        try:
+            from _lib_backup import backup_project_json
+            backup_project_json(project_dir, tag="photo_slideshow")
+        except Exception as e:
+            print(f"  ⚠ 백업 건너뜀: {e}")
+
     if project_dir.exists():
         shutil.rmtree(project_dir)
     shutil.copytree(str(template_dir), str(project_dir))
