@@ -453,8 +453,8 @@ _SHORT_TAIL_ENDINGS = (
 
 def merge_cross_segment_parts(
     parts: list[dict],
-    max_gap: float = 0.5,
-    max_merged_chars: int = 27,
+    max_gap: float = 1.0,
+    max_merged_chars: int = 32,
 ) -> list[dict]:
     """서로 다른 Whisper 세그먼트에서 나온 인접 파트 중 문장이 미완성으로 끊긴 경우를 병합.
 
