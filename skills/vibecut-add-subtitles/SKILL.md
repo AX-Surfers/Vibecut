@@ -1,10 +1,10 @@
 ---
 name: vibecut-add-subtitles
-version: 0.2.0
+version: 0.3.0
 description: |
   영상에 한국어 자막을 자동으로 추가합니다. Whisper 전사 → 누적 사전으로 1차 교정 →
-  subtitle-verifier 에이전트로 검증 → 단어 단위 싱크 + 18자 분리 + 검은 외곽선으로
-  CapCut 프로젝트에 적용합니다.
+  subtitle-splitter 서브에이전트로 자연스러운 문장 경계 분할 → subtitle-verifier로 검증 →
+  단어 단위 싱크 + 검은 외곽선으로 CapCut 프로젝트에 적용합니다.
   auto-edit(무음 제거) 이후 실행 시 편집된 타임라인 기준으로 오디오를 추출해 자막을 생성합니다.
   트리거: "자막 추가", "자막 올려", "자막 만들어", "subtitle add", "/vibecut-add-subtitles"
 metadata:
@@ -31,18 +31,21 @@ allowed-tools:
 영상 (.mov/.mp4)
    │
    ├─ [1] Whisper 전사 (단어 타임스탬프 포함)
-   │        ↓ <video>.srt + <video>_words.json
+   │        ↓ <video>.srt + <video>_words.json + /tmp/subtitle_input.json
    │
    ├─ [2] 누적 사전 1차 적용 (corrections.json, 자동·무료)
    │        ↓ 알려진 패턴 자동 교정
    │
-   ├─ [3] subtitle-verifier 에이전트 호출
+   ├─ [3] subtitle-splitter 서브에이전트 호출
+   │        ↓ /tmp/subtitle_splits.json (한국어 문법 경계 기준 분할)
+   │
+   ├─ [4] subtitle-verifier 에이전트 호출
    │        ↓ <video>_verified.srt + 사전 자동 업데이트
    │
-   ├─ [4] 단어 순차 매칭 + 18자 분리 + 종결어미 머지
+   ├─ [5] 단어 순차 매칭 + AI 분할 적용 + 종결어미 머지
    │        ↓ 음성-자막 정확한 싱크
    │
-   └─ [5] CapCut JSON 4개 파일 동시 갱신 + 검은 외곽선
+   └─ [6] CapCut JSON 4개 파일 동시 갱신 + 검은 외곽선
               ↓ 편집 가능한 상태로 결과 제공
 ```
 
@@ -155,6 +158,27 @@ uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
 
 **왜 단어 타임스탬프가 필요한가:** 시간 균등 분할 시 빠른 발화 / 느린 발화에서 싱크가 어긋남. 단어별 시작·끝 시간을 알아야 정확한 분리가 가능.
 
+> `add_subtitles.py`는 전사 후 `/tmp/subtitle_input.json`을 자동 저장합니다 — subtitle-splitter가 이 파일을 입력으로 사용합니다.
+
+### 단계 3: subtitle-splitter 서브에이전트 호출
+
+```python
+Task(
+    description="한국어 자막 문법 경계 분할",
+    subagent_type="subtitle-splitter",
+    prompt=(
+        "/tmp/subtitle_input.json을 읽어 각 세그먼트를 자연스러운 한국어 문법 경계로 분할하고 "
+        "/tmp/subtitle_splits.json에 저장해줘."
+    )
+)
+```
+
+**subtitle-splitter가 하는 일:**
+- 글자 수 제한(18자)이 아닌 **문법·호흡 경계**에서 자막 분할
+- 연결어미(`~하면`, `~하고`, `~해서`), 접속사(`그리고`, `그런데`) 뒤에서 자연스럽게 끊음
+- 명사구 중간, 조사와 앞 명사는 분리하지 않음
+- 세그먼트 수 1:1 대응 필수 (타임스탬프 매핑 기준)
+
 ### 단계 4: subtitle-verifier 에이전트 호출
 
 ```python
@@ -178,13 +202,19 @@ Task(
 ### 단계 5: 검증된 자막을 CapCut에 적용
 
 ```bash
+# subtitle-splits.json이 있으면 AI 분할 결과 적용
+uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
+  --srt "${VIDEO%.*}_verified.srt" \
+  --splits /tmp/subtitle_splits.json
+
+# splits 파일이 없는 경우 (subtitle-splitter 생략 시)
 uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
   --srt "${VIDEO%.*}_verified.srt"
 ```
 
 스크립트가 자동 처리하는 작업:
-1. **단어 순차 매칭** — 각 단어는 정확히 한 자막에만 할당 (중복 매칭 방지)
-2. **18자 단위 분리** — 한국어 자막 화면 잘림 방지
+1. **AI 분할 적용** — `/tmp/subtitle_splits.json`의 분할 결과를 단어 타임스탬프에 매핑 (`--splits` 지정 시)
+2. **단어 순차 매칭** — 각 단어는 정확히 한 자막에만 할당 (중복 매칭 방지)
 3. **종결어미 머지** — "됩니다.", "되겠죠" 등 짧은 꼬리를 앞 자막에 합침
 4. **겹침 제거** — 인접 자막 시간 겹침 자동 후처리 (`min_gap=0.02s`)
 5. **검은 외곽선** — `border_width=0.15` + `content.styles[].strokes` (가독성)
@@ -198,6 +228,7 @@ uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
 ```
 ✓ CapCut '<프로젝트명>' 프로젝트 생성 완료
   - 자막: NNN개 세그먼트 (단어 단위 싱크)
+  - 분할: AI 문법 경계 기준 (subtitle-splitter)
   - 검증: X건 교정 (예: "챕포"→"챗봇", "재미나"→"Gemini")
   - 사전 학습: Y개 새 패턴 추가 → corrections.json
   - 가독성: 검은 외곽선 적용
