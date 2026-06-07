@@ -1032,6 +1032,10 @@ def create_project(video_path: Path, segments: list[dict], project_name: str) ->
                 "target_timerange": {"start": part_start_us, "duration": dur_us},
                 "render_index": 14000 + render_idx,
             })
+            # 자막 위치를 항상 하단 고정 (템플릿/기본값과 무관하게 일관된 위치 보장)
+            # y = -0.74: 화면 하단 (CapCut 좌표계: -1=최하단, 0=중앙, 1=최상단)
+            new_tseg.setdefault("clip", {}).setdefault("transform", {})
+            new_tseg["clip"]["transform"]["y"] = -0.7407407407407407
             text_segments.append(new_tseg)
             render_idx += 1
 
