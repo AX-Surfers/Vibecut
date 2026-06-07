@@ -49,9 +49,18 @@ allowed-tools:
 
 ## 전제 조건
 
+**CapCut이 실행 중이면 반드시 먼저 종료해야 합니다.** 실행 중에 draft_info.json을 수정해도 CapCut이 덮어씁니다.
+
 ```bash
-# CapCut 완전 종료 (자동 종료됨)
-ps aux | grep "CapCut.app/Contents/MacOS/CapCut" | grep -v grep
+# CapCut 실행 여부 확인 후 강제 종료
+if pgrep -i "CapCut" > /dev/null 2>&1; then
+  echo "⚠ CapCut 실행 중 — 강제 종료합니다..."
+  pkill -i "CapCut"
+  sleep 2
+  echo "✅ CapCut 종료 완료"
+else
+  echo "✅ CapCut 종료 상태 확인"
+fi
 
 # ffmpeg
 which ffmpeg
