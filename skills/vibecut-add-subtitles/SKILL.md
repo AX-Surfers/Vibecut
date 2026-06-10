@@ -1,10 +1,11 @@
 ---
 name: vibecut-add-subtitles
-version: 0.1.0
+version: 0.3.0
 description: |
   영상에 한국어 자막을 자동으로 추가합니다. Whisper 전사 → 누적 사전으로 1차 교정 →
-  subtitle-verifier 에이전트로 검증 → 단어 단위 싱크 + 18자 분리 + 검은 외곽선으로
-  CapCut 프로젝트에 적용합니다.
+  subtitle-splitter 서브에이전트로 자연스러운 문장 경계 분할 → subtitle-verifier로 검증 →
+  단어 단위 싱크 + 검은 외곽선으로 CapCut 프로젝트에 적용합니다.
+  auto-edit(무음 제거) 이후 실행 시 편집된 타임라인 기준으로 오디오를 추출해 자막을 생성합니다.
   트리거: "자막 추가", "자막 올려", "자막 만들어", "subtitle add", "/vibecut-add-subtitles"
 metadata:
   category: video
@@ -24,30 +25,65 @@ allowed-tools:
 
 ## 핵심 처리 흐름
 
+### 모드 A: 원본 영상 기준 (기본)
+
 ```
 영상 (.mov/.mp4)
    │
    ├─ [1] Whisper 전사 (단어 타임스탬프 포함)
-   │        ↓ <video>.srt + <video>_words.json
+   │        ↓ <video>.srt + <video>_words.json + /tmp/subtitle_input.json
    │
    ├─ [2] 누적 사전 1차 적용 (corrections.json, 자동·무료)
    │        ↓ 알려진 패턴 자동 교정
    │
-   ├─ [3] subtitle-verifier 에이전트 호출
+   ├─ [3] subtitle-splitter 서브에이전트 호출
+   │        ↓ /tmp/subtitle_splits.json (한국어 문법 경계 기준 분할)
+   │
+   ├─ [4] subtitle-verifier 에이전트 호출
    │        ↓ <video>_verified.srt + 사전 자동 업데이트
    │
-   ├─ [4] 단어 순차 매칭 + 18자 분리 + 종결어미 머지
+   ├─ [5] 단어 순차 매칭 + AI 분할 적용 + 종결어미 머지
    │        ↓ 음성-자막 정확한 싱크
    │
-   └─ [5] CapCut JSON 4개 파일 동시 갱신 + 검은 외곽선
+   └─ [6] CapCut JSON 4개 파일 동시 갱신 + 검은 외곽선
               ↓ 편집 가능한 상태로 결과 제공
 ```
+
+### 모드 B: 편집 타임라인 기준 (auto-edit 이후)
+
+`final_segments.json` 또는 `speech_segments.json`이 있거나 `--segments`로 명시할 때 자동 활성화.
+
+```
+영상 + speech_segments.json (auto-edit 결과)
+   │
+   ├─ [0] ffmpeg로 각 발화 구간만 오디오 추출 → 연결
+   │        ↓ <video>_edited_audio.wav
+   │        (연결된 오디오 타임스탬프 = CapCut 편집 타임라인 타임스탬프)
+   │
+   ├─ [1] Whisper 전사 (_edited_audio.wav 기준)
+   │        ↓ <video>_edited.srt + <video>_edited_words.json
+   │
+   ├─ [2~4] 사전 교정 → 검증 → 싱크 (동일)
+   │
+   └─ [5] CapCut JSON 적용
+              ↓ 자막이 편집된 타임라인과 정확히 맞아떨어짐
+```
+
+**핵심 원리:** 발화 구간을 붙여서 만든 오디오의 시간 = CapCut이 세그먼트를 이어붙인 타임라인의 시간. 별도의 시간 변환 없이 Whisper 타임스탬프가 그대로 CapCut 자막 위치가 됨.
 
 ## 전제 조건
 
 ```bash
-# CapCut 종료 확인 (자동 종료됨)
-ps aux | grep "CapCut.app/Contents/MacOS/CapCut" | grep -v grep
+# CapCut 실행 여부 확인 후 강제 종료
+# 실행 중에 draft_info.json을 수정해도 CapCut이 덮어쓰므로 반드시 먼저 종료
+if pgrep -i "CapCut" > /dev/null 2>&1; then
+  echo "⚠ CapCut 실행 중 — 강제 종료합니다..."
+  pkill -i "CapCut"
+  sleep 2
+  echo "✅ CapCut 종료 완료"
+else
+  echo "✅ CapCut 종료 상태 확인"
+fi
 
 # ffmpeg
 which ffprobe
@@ -60,12 +96,21 @@ which uv || curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## 실행 흐름
 
-### 단계 1: 입력 확인
+### 단계 1: 입력 확인 + 편집 타임라인 감지
 
 ```bash
 # 영상 파일 인자 확인. 없으면 사용자에게 물어보거나 현재 디렉토리 탐색
 find . -maxdepth 2 -type f \( -name "*.mov" -o -name "*.mp4" \) | head -5
+
+# auto-edit 결과 segments 파일 자동 탐색
+SEGMENTS_FILE=""
+for f in final_segments.json speech_segments.json /tmp/final_segments.json /tmp/speech_segments.json; do
+  [ -f "$f" ] && SEGMENTS_FILE="$f" && break
+done
+# SEGMENTS_FILE이 있으면 --segments 플래그로 전달 (모드 B 자동 활성화)
 ```
+
+**판단 기준:** `final_segments.json` 우선, 없으면 `speech_segments.json`. 둘 다 없으면 원본 영상 기준(모드 A)으로 진행.
 
 ### 단계 2: Whisper 모델 선택 (Human-in-the-Loop)
 
@@ -94,14 +139,45 @@ AskUserQuestion(questions=[{
 ### 단계 3: Whisper 전사 (단어 타임스탬프 필수)
 
 ```bash
-SCRIPTS="${CLAUDE_PLUGIN_ROOT}/scripts"
+SCRIPTS="/Users/seungryk/youtube/vibecut/scripts"
+
+# 모드 A: 원본 영상 기준
 uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
   --model "${WHISPER_MODEL}" \
   --no-verify
 # → <video>.srt, <video>_words.json 생성
+
+# 모드 B: 편집 타임라인 기준 (SEGMENTS_FILE이 있을 때)
+uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
+  --model "${WHISPER_MODEL}" \
+  --segments "${SEGMENTS_FILE}" \
+  --no-verify
+# → <video>_edited_audio.wav 추출 후 전사
+# → <video>_edited.srt, <video>_edited_words.json 생성
 ```
 
 **왜 단어 타임스탬프가 필요한가:** 시간 균등 분할 시 빠른 발화 / 느린 발화에서 싱크가 어긋남. 단어별 시작·끝 시간을 알아야 정확한 분리가 가능.
+
+> `add_subtitles.py`는 전사 후 `/tmp/subtitle_input.json`을 자동 저장합니다 — subtitle-splitter가 이 파일을 입력으로 사용합니다.
+
+### 단계 3: subtitle-splitter 서브에이전트 호출
+
+```python
+Task(
+    description="한국어 자막 문법 경계 분할",
+    subagent_type="subtitle-splitter",
+    prompt=(
+        "/tmp/subtitle_input.json을 읽어 각 세그먼트를 자연스러운 한국어 문법 경계로 분할하고 "
+        "/tmp/subtitle_splits.json에 저장해줘."
+    )
+)
+```
+
+**subtitle-splitter가 하는 일:**
+- 글자 수 제한(18자)이 아닌 **문법·호흡 경계**에서 자막 분할
+- 연결어미(`~하면`, `~하고`, `~해서`), 접속사(`그리고`, `그런데`) 뒤에서 자연스럽게 끊음
+- 명사구 중간, 조사와 앞 명사는 분리하지 않음
+- 세그먼트 수 1:1 대응 필수 (타임스탬프 매핑 기준)
 
 ### 단계 4: subtitle-verifier 에이전트 호출
 
@@ -126,13 +202,19 @@ Task(
 ### 단계 5: 검증된 자막을 CapCut에 적용
 
 ```bash
+# subtitle-splits.json이 있으면 AI 분할 결과 적용
+uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
+  --srt "${VIDEO%.*}_verified.srt" \
+  --splits /tmp/subtitle_splits.json
+
+# splits 파일이 없는 경우 (subtitle-splitter 생략 시)
 uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
   --srt "${VIDEO%.*}_verified.srt"
 ```
 
 스크립트가 자동 처리하는 작업:
-1. **단어 순차 매칭** — 각 단어는 정확히 한 자막에만 할당 (중복 매칭 방지)
-2. **18자 단위 분리** — 한국어 자막 화면 잘림 방지
+1. **AI 분할 적용** — `/tmp/subtitle_splits.json`의 분할 결과를 단어 타임스탬프에 매핑 (`--splits` 지정 시)
+2. **단어 순차 매칭** — 각 단어는 정확히 한 자막에만 할당 (중복 매칭 방지)
 3. **종결어미 머지** — "됩니다.", "되겠죠" 등 짧은 꼬리를 앞 자막에 합침
 4. **겹침 제거** — 인접 자막 시간 겹침 자동 후처리 (`min_gap=0.02s`)
 5. **검은 외곽선** — `border_width=0.15` + `content.styles[].strokes` (가독성)
@@ -146,6 +228,7 @@ uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
 ```
 ✓ CapCut '<프로젝트명>' 프로젝트 생성 완료
   - 자막: NNN개 세그먼트 (단어 단위 싱크)
+  - 분할: AI 문법 경계 기준 (subtitle-splitter)
   - 검증: X건 교정 (예: "챕포"→"챗봇", "재미나"→"Gemini")
   - 사전 학습: Y개 새 패턴 추가 → corrections.json
   - 가독성: 검은 외곽선 적용
@@ -157,19 +240,27 @@ uv run "${SCRIPTS}/add_subtitles.py" "${VIDEO}" \
 
 | 사용자 발화 | 스킬 동작 |
 |------------|----------|
-| "자막 추가해줘" | 영상 파일 선택 → 모델 선택 → 전체 파이프라인 |
+| "자막 추가해줘" | segments 파일 탐색 → 있으면 모드 B, 없으면 모드 A |
+| "편집된 타임라인으로 자막 만들어" | `final_segments.json` 자동 탐색 → 모드 B |
 | "before.mov에 자막 올려" | 1단계 생략, 바로 2~6단계 |
-| "이 영상 자막 만들어" | 현재 디렉토리에서 영상 탐색 |
 | "검증 없이 자막만 빨리" | `--no-verify` 플래그 + 4단계 생략 |
 
 ## 캐시 활용 (재실행 시)
 
+### 모드 A (원본 기준)
 | 파일 존재 | 동작 |
 |----------|------|
 | `<video>_verified.srt` | Whisper + 검증 모두 생략, 바로 적용 |
 | `<video>.srt` + `<video>_words.json` | Whisper 생략, 검증부터 |
 | `<video>.srt`만 | Whisper 생략, 검증부터 (균등 분할로 폴백) |
 | 없음 | 전체 파이프라인 |
+
+### 모드 B (편집 타임라인 기준)
+| 파일 존재 | 동작 |
+|----------|------|
+| `<video>_edited_verified.srt` | 오디오 추출 + Whisper + 검증 모두 생략 |
+| `<video>_edited.srt` + `<video>_edited_words.json` | 오디오 추출 + Whisper 생략, 검증부터 |
+| 없음 | 오디오 추출 → Whisper → 검증 전체 |
 
 ## 환경 변수 (선택)
 

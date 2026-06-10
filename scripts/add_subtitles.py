@@ -13,6 +13,7 @@ Vibecut — 영상 → Whisper 전사 → CapCut 새 프로젝트에 자막 트�
   uv run scripts/add_subtitles.py <video.mov> --project-name <이름>
   uv run scripts/add_subtitles.py <video.mov> --srt <기존.srt>  # Whisper 생략
   uv run scripts/add_subtitles.py <video.mov> --model medium    # 모델 선택
+  uv run scripts/add_subtitles.py <video.mov> --splits /tmp/subtitle_splits.json  # AI 분할 적용
 
 환경변수 (선택):
   VIBECUT_TEMPLATE_NAME  — CapCut 템플릿 프로젝트 이름 (기본: 자동 감지)
@@ -58,6 +59,138 @@ TEMPLATE_NAME = _find_template_name()
 TEMPLATE_DIR  = CAPCUT_PROJECTS / TEMPLATE_NAME
 
 FPS = 30
+
+# ──────────────────────────────────────────
+# 기본 자막 스타일 (템플릿 프로젝트에 texts가 없을 때 fallback)
+# 서울한강체 B, 크기 6, 그림자, 검은 외곽선
+# CapCut 프로젝트의 첫 자막 스타일에서 추출한 값
+# ──────────────────────────────────────────
+_DEFAULT_TEXT_CONTENT = {
+    "styles": [{
+        "fill": {"content": {"solid": {"color": [1, 1, 1]}, "render_type": "solid"}},
+        "range": [0, 1],
+        "shadows": [{
+            "thickness_projection_distance": 0,
+            "thickness_projection_angle": -45,
+            "diffuse": 0.05,
+            "distance": 5.0,
+            "content": {"solid": {"color": [0, 0, 0]}, "render_type": "solid"},
+            "thickness_projection_enable": False,
+            "angle": -45,
+        }],
+        "size": 6,
+        "font": {
+            "path": "/Users/seungryk/Library/Containers/com.lemon.lvoverseas/Data/Movies/"
+                    "CapCut/User Data/Cache/effect/7480847118538706181/"
+                    "892de34daab569720c6dbc43537e8cf5/font.ttf",
+            "id": "7480847118538706181",
+        },
+    }],
+    "text": "",
+}
+
+DEFAULT_TEXT_MATERIAL: dict = {
+    "recognize_task_id": "", "id": "", "name": "", "recognize_text": "",
+    "recognize_model": "", "punc_model": "", "type": "text",
+    "content": json.dumps(_DEFAULT_TEXT_CONTENT, ensure_ascii=False),
+    "base_content": "",
+    "words": {"start_time": [], "end_time": [], "text": []},
+    "current_words": {"start_time": [], "end_time": [], "text": []},
+    "global_alpha": 1.0,
+    "combo_info": {"text_templates": []},
+    "caption_template_info": {
+        "resource_id": "", "third_resource_id": "", "resource_name": "",
+        "category_id": "", "category_name": "", "effect_id": "", "request_id": "",
+        "path": "", "is_new": False, "source_platform": 0,
+    },
+    "layer_weight": 0, "letter_spacing": 0.0, "text_curve": None,
+    "text_loop_on_path": False, "offset_on_path": 0.0,
+    "enable_path_typesetting": False, "text_exceeds_path_process_type": 0,
+    "text_typesetting_paths": None, "text_typesetting_paths_file": "",
+    "text_typesetting_path_index": 0,
+    "line_spacing": 0.02,
+    "has_shadow": True, "shadow_color": "#000000", "shadow_alpha": 1.0,
+    "shadow_smoothing": 0.9, "shadow_distance": 5.0,
+    "shadow_point": {"x": 0.6363961030678928, "y": -0.6363961030678927},
+    "shadow_angle": -45.0, "shadow_thickness_projection_enable": False,
+    "shadow_thickness_projection_angle": 0.0, "shadow_thickness_projection_distance": 0.0,
+    "border_alpha": 1.0, "border_color": "#000000", "border_width": 0.15, "border_mode": 0,
+    "style_name": "", "text_color": "", "text_alpha": 1.0,
+    "font_name": "", "font_title": "",
+    "font_size": 6.0,
+    "font_path": "/Users/seungryk/Library/Containers/com.lemon.lvoverseas/Data/Movies/"
+                 "CapCut/User Data/Cache/effect/7480847118538706181/"
+                 "892de34daab569720c6dbc43537e8cf5/font.ttf",
+    "font_id": "", "font_resource_id": "7480847118538706181",
+    "initial_scale": 0.0, "font_url": "", "typesetting": 0, "alignment": 1, "line_feed": 1,
+    "use_effect_default_color": True, "is_rich_text": False,
+    "shape_clip_x": False, "shape_clip_y": False, "ktv_color": "",
+    "text_to_audio_ids": [], "bold_width": 0.0, "italic_degree": 0,
+    "underline": False, "underline_width": 0.05, "underline_offset": 0.22,
+    "sub_type": 0, "check_flag": 39, "text_size": 30,
+    "font_category_name": "", "font_source_platform": 1,
+    "font_third_resource_id": "", "font_category_id": "",
+    "fonts": [{
+        "id": "", "resource_id": "7480847118538706181", "third_resource_id": "",
+        "category_id": "preset", "category_name": "사전 설정", "source_platform": 1,
+        "path": "/Users/seungryk/Library/Containers/com.lemon.lvoverseas/Data/Movies/"
+                "CapCut/User Data/Cache/effect/7480847118538706181/"
+                "892de34daab569720c6dbc43537e8cf5/font.ttf",
+        "effect_id": "7480847118538706181", "title": "서울한강체 B",
+        "team_id": "", "file_uri": "", "request_id": "",
+    }],
+    "add_type": 0, "operation_type": 0, "recognize_type": 0,
+    "background_color": "", "background_alpha": 1.0, "background_style": 0,
+    "background_round_radius": 0.0, "background_width": 0.14,
+    "background_height": 0.14, "background_vertical_offset": 0.0,
+    "background_horizontal_offset": 0.0, "background_fill": "",
+    "single_char_bg_enable": False, "single_char_bg_color": "", "single_char_bg_alpha": 1.0,
+    "single_char_bg_round_radius": 0.3, "single_char_bg_width": 0.0,
+    "single_char_bg_height": 0.0, "single_char_bg_vertical_offset": 0.0,
+    "single_char_bg_horizontal_offset": 0.0,
+    "font_team_id": "", "tts_auto_update": False, "text_preset_resource_id": "",
+    "group_id": "", "preset_id": "", "preset_name": "", "preset_category": "",
+    "preset_category_id": "", "preset_index": 0, "preset_has_set_alignment": False,
+    "force_apply_line_max_width": False, "language": "", "relevance_segment": [],
+    "original_size": [], "fixed_width": -1.0, "fixed_height": -1.0,
+    "line_max_width": 0.82, "oneline_cutoff": False, "cutoff_postfix": "",
+    "subtitle_template_original_fontsize": 0.0, "subtitle_keywords": None,
+    "inner_padding": -1.0, "multi_language_current": "none", "source_from": "",
+    "is_lyric_effect": False, "lyric_group_id": "", "ssml_content": "",
+    "subtitle_keywords_config": None, "sub_template_id": -1, "translate_original_text": "",
+}
+
+DEFAULT_TEXT_SEGMENT: dict = {
+    "id": "", "source_timerange": None,
+    "target_timerange": {"start": 0, "duration": 1000000},
+    "render_timerange": {"start": 0, "duration": 0},
+    "desc": "", "state": 0, "speed": 1.0, "is_loop": False, "is_tone_modify": False,
+    "reverse": False, "intensifies_audio": False, "cartoon": False,
+    "volume": 1.0, "last_nonzero_volume": 1.0,
+    "clip": {
+        "scale": {"x": 1.0, "y": 1.0}, "rotation": 0.0,
+        "transform": {"x": 0.0, "y": -0.7407407407407407},
+        "flip": {"vertical": False, "horizontal": False}, "alpha": 1.0,
+    },
+    "uniform_scale": {"on": True, "value": 1.0},
+    "material_id": "", "extra_material_refs": [], "render_index": 14000,
+    "keyframe_refs": [], "enable_lut": False, "enable_adjust": False,
+    "enable_hsl": False, "visible": True, "group_id": "",
+    "enable_color_curves": True, "enable_hsl_curves": True, "track_render_index": 1,
+    "hdr_settings": None, "enable_color_wheels": True, "track_attribute": 0,
+    "is_placeholder": False, "template_id": "", "enable_smart_color_adjust": False,
+    "template_scene": "default", "common_keyframes": [], "caption_info": None,
+    "responsive_layout": {
+        "enable": False, "target_follow": "", "size_layout": 0,
+        "horizontal_pos_layout": 0, "vertical_pos_layout": 0,
+    },
+    "enable_color_match_adjust": False, "enable_color_correct_adjust": False,
+    "enable_adjust_mask": False, "raw_segment_id": "", "lyric_keyframes": None,
+    "enable_video_mask": True, "digital_human_template_group_id": "",
+    "color_correct_alg_result": "", "source": "segmentsourcenormal",
+    "enable_mask_stroke": False, "enable_mask_shadow": False,
+    "enable_color_adjust_pro": False,
+}
 
 
 # ──────────────────────────────────────────
@@ -292,6 +425,14 @@ def split_with_word_sync(seg: dict, max_chars: int = 18) -> list[dict]:
     if current_words:
         parts.append(current_words)
 
+    # 후처리: 관형사·지시사가 그룹 마지막 단어면 다음 그룹으로 이동
+    # 예: ["...활용해서", "이"] → ["...활용해서"] / ["이", "스킬을 ..."]
+    _DANGLING_ARTICLES = {"이", "그", "저", "이런", "그런", "저런", "한", "어떤", "각", "제"}
+    for j in range(len(parts) - 1):
+        if parts[j] and parts[j][-1]["word"].strip() in _DANGLING_ARTICLES:
+            moved = parts[j].pop()
+            parts[j + 1].insert(0, moved)
+
     # 각 그룹을 자막 dict로 변환
     result = []
     for group in parts:
@@ -316,6 +457,136 @@ _SHORT_TAIL_ENDINGS = (
     "다", "다.", "요", "요.", "죠", "죠.", "네", "네.", "까", "까?",
     "함", "함.", "음", "음.", "임", "임.", "지", "지.", "요!", "다!",
 )
+
+
+def merge_cross_segment_parts(
+    parts: list[dict],
+    max_gap: float = 1.0,
+    max_merged_chars: int = 32,
+) -> list[dict]:
+    """서로 다른 Whisper 세그먼트에서 나온 인접 파트 중 문장이 미완성으로 끊긴 경우를 병합.
+
+    컷편집 이음매에서 Whisper가 하나의 문장을 두 세그먼트로 나누면
+    _merge_short_tails()가 처리하지 못하는 cross-segment 케이스를 여기서 처리.
+
+    조건 (모두 충족 시 병합):
+    1. prev.text가 종결어미(_SHORT_TAIL_ENDINGS)로 끝나지 않음  ← 문장 미완성
+    2. next.start - prev.end ≤ max_gap (기본 0.5초)             ← 바로 이어지는 파트
+    3. 합친 길이 ≤ max_merged_chars (기본 27자)                  ← 한 자막에 담을 수 있음
+    """
+    if len(parts) < 2:
+        return parts
+
+    merged = [parts[0]]
+    for part in parts[1:]:
+        prev = merged[-1]
+        gap = part["start"] - prev["end"]
+        merged_len = len(prev["text"]) + 1 + len(part["text"])
+        is_complete = prev["text"].endswith(_SHORT_TAIL_ENDINGS)
+
+        if not is_complete and gap <= max_gap and merged_len <= max_merged_chars:
+            prev["text"] = prev["text"] + " " + part["text"]
+            prev["end"] = part["end"]
+        else:
+            merged.append(part)
+    return merged
+
+
+def split_by_splits(segments: list[dict], splits_data: list[list[str]]) -> list[dict]:
+    """AI 분할 결과(splits_data)와 단어 타임스탬프를 매핑해 자막 파트 리스트 반환.
+
+    splits_data: [[part1, part2, ...], ...] — segments와 1:1 대응 (subtitle-splitter 출력)
+    반환: [{start, end, text}, ...] (기존 split_with_word_sync 결과와 동일 형태)
+
+    단어 매핑 알고리즘:
+    - 각 파트의 텍스트를 공백 제거 후 정규화
+    - 세그먼트의 words 배열을 순서대로 소비하면서 누적 텍스트가 파트와 일치하면 경계 확정
+    - 마지막 파트는 남은 단어 모두 할당
+    - words가 없으면 시간 균등 분할 폴백
+    """
+    result = []
+    for i, seg in enumerate(segments):
+        if not seg.get("text", "").strip():
+            continue
+
+        if i >= len(splits_data) or not splits_data[i]:
+            result.extend(split_with_word_sync(seg, max_chars=18))
+            continue
+
+        parts_text = [p for p in splits_data[i] if p.strip()]
+        if not parts_text:
+            result.extend(split_with_word_sync(seg, max_chars=18))
+            continue
+
+        words = seg.get("words", [])
+        seg_start = seg["start"]
+        seg_end = seg["end"]
+
+        if not words or len(parts_text) == 1:
+            # 단어 없거나 분할 없음
+            dur = (seg_end - seg_start) / max(len(parts_text), 1)
+            for j, pt in enumerate(parts_text):
+                result.append({
+                    "start": seg_start + dur * j,
+                    "end": seg_start + dur * (j + 1) if j < len(parts_text) - 1 else seg_end,
+                    "text": pt,
+                })
+            continue
+
+        # 단어를 각 파트의 텍스트에 순차적으로 greedy 매핑
+        word_idx = 0
+        for j, pt in enumerate(parts_text):
+            is_last = (j == len(parts_text) - 1)
+            pt_norm = pt.replace(" ", "")
+
+            if is_last:
+                # 마지막 파트: 남은 단어 전부
+                part_words = words[word_idx:]
+            else:
+                part_words = []
+                accumulated = ""
+                while word_idx < len(words):
+                    w = words[word_idx]
+                    accumulated += w["word"].strip()
+                    part_words.append(w)
+                    word_idx += 1
+                    if accumulated.replace(" ", "") == pt_norm:
+                        break
+                    # 누적이 목표를 초과하면 단어 경계가 어긋난 것 — 이대로 사용
+                    if len(accumulated.replace(" ", "")) >= len(pt_norm):
+                        break
+
+            if part_words:
+                result.append({
+                    "start": part_words[0]["start"],
+                    "end": part_words[-1]["end"],
+                    "text": pt,
+                })
+            else:
+                # 단어 매핑 실패 (빈 파트) — 세그먼트 균등 시간 사용
+                dur = (seg_end - seg_start) / len(parts_text)
+                result.append({
+                    "start": seg_start + dur * j,
+                    "end": seg_start + dur * (j + 1) if not is_last else seg_end,
+                    "text": pt,
+                })
+
+    return result
+
+
+def dump_subtitle_input(segments: list[dict], out_path: str = "/tmp/subtitle_input.json"):
+    """Whisper 세그먼트를 subtitle-splitter 에이전트용 JSON으로 덤프.
+
+    출력 형식: [{"id": int, "text": str, "words": [{start, end, word}, ...]}, ...]
+    """
+    data = [
+        {"id": i, "text": seg.get("text", "").strip(), "words": seg.get("words", [])}
+        for i, seg in enumerate(segments)
+        if seg.get("text", "").strip()
+    ]
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"  → subtitle_input.json 저장: {out_path} ({len(data)}개 세그먼트)")
 
 
 def _merge_short_tails(parts: list[dict], max_chars: int = 18,
@@ -370,6 +641,36 @@ def is_photo(path: Path) -> bool:
     return path.suffix.lower() in PHOTO_EXTENSIONS
 
 
+def extract_audio_from_segments(video_path: Path, segments: list[list[float]], out_wav: Path) -> None:
+    """편집된 구간만 오디오를 추출·연결해 WAV로 저장.
+
+    segments: [[start_sec, end_sec], ...] — auto-edit이 남긴 발화 구간
+    연결된 오디오의 타임스탬프 = CapCut 편집 타임라인 타임스탬프 (1:1 대응)
+    """
+    if not segments:
+        raise ValueError("segments가 비어 있음")
+
+    # ffmpeg filter_complex로 각 구간을 잘라 연결
+    inputs = ["-i", str(video_path)]
+    filter_parts = []
+    for i, (s, e) in enumerate(segments):
+        filter_parts.append(f"[0:a]atrim=start={s}:end={e},asetpts=PTS-STARTPTS[a{i}]")
+    concat_inputs = "".join(f"[a{i}]" for i in range(len(segments)))
+    filter_parts.append(f"{concat_inputs}concat=n={len(segments)}:v=0:a=1[aout]")
+
+    cmd = ["ffmpeg", "-y"] + inputs + [
+        "-filter_complex", ";".join(filter_parts),
+        "-map", "[aout]",
+        "-ar", "16000", "-ac", "1",
+        str(out_wav)
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print("ffmpeg 오디오 추출 오류:", result.stderr[-800:], file=sys.stderr)
+        sys.exit(1)
+    print(f"  → 편집 구간 오디오 추출: {len(segments)}개 구간, {out_wav.name}")
+
+
 def get_video_duration_us(video_path: Path) -> int:
     result = subprocess.run(
         ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
@@ -396,26 +697,53 @@ def quit_capcut():
 # ──────────────────────────────────────────
 # Step 1: Whisper 전사
 # ──────────────────────────────────────────
-def transcribe(video_path: Path, model_name: str = "small", beam_size: int = 1) -> list[dict]:
+def extract_audio(video_path: Path) -> Path:
+    """영상에서 16kHz mono WAV 오디오 추출 (Whisper 최적 포맷).
+
+    캐시({stem}_audio.wav)가 있으면 재사용.
+    반환: WAV 경로
+    """
+    wav_path = video_path.with_name(video_path.stem + "_audio.wav")
+    if wav_path.exists():
+        print(f"  오디오 캐시 사용: {wav_path.name}")
+        return wav_path
+    print(f"  오디오 추출 중: {video_path.name} → {wav_path.name}")
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-i", str(video_path),
+         "-vn", "-ar", "16000", "-ac", "1", str(wav_path)],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print("ffmpeg 오디오 추출 오류:", result.stderr[-400:], file=sys.stderr)
+        sys.exit(1)
+    size_mb = wav_path.stat().st_size / 1024 / 1024
+    print(f"  → {wav_path.name} ({size_mb:.1f}MB)")
+    return wav_path
+
+
+def transcribe(video_path: Path, model_name: str = "small", beam_size: int = 1,
+               audio_path: Path | None = None) -> list[dict]:
     """faster-whisper로 한국어 전사 + 단어 타임스탬프.
 
-    model_name: tiny / base / small / medium / large-v3
-    - tiny: ~30초 (5분 영상), 정확도 매우 낮음
-    - base: ~1분, 보통
-    - small: ~3분, 좋음 (★ 기본값, 균형)
-    - medium: ~10-20분, 매우 좋음
-    - large-v3: ~30-60분, 최고 정확도
-
-    beam_size: 클수록 정확하지만 느림 (small/medium은 1, large는 5 권장)
+    audio_path: 편집 구간만 추출된 WAV (--segments 모드). 지정 시 그 파일 전사.
+    지정 안 하면 video_path에서 오디오를 자동 추출한 WAV로 전사.
+    영상 파일을 직접 넘기지 않고 항상 WAV를 경유함.
 
     반환: [{start, end, text, words: [{start, end, word}, ...]}, ...]
     """
-    py = "/usr/local/bin/python3.11"
-    print(f"  모델: {model_name}, beam_size: {beam_size}")
+    py = sys.executable
+    # 편집 구간 오디오가 명시된 경우 그것을 사용, 아니면 전체 오디오 추출
+    if audio_path:
+        target = audio_path
+        print(f"  모델: {model_name}, beam_size: {beam_size}")
+        print(f"  전사 대상: 편집된 오디오 ({audio_path.name})")
+    else:
+        target = extract_audio(video_path)
+        print(f"  모델: {model_name}, beam_size: {beam_size}")
     script = (
         "from faster_whisper import WhisperModel\nimport json\n"
         f'model = WhisperModel("{model_name}", device="cpu", compute_type="int8")\n'
-        f'segs, _ = model.transcribe("{video_path}", language="ko", beam_size={beam_size}, word_timestamps=True)\n'
+        f'segs, _ = model.transcribe("{target}", language="ko", beam_size={beam_size}, word_timestamps=True)\n'
         "result = []\n"
         "for s in segs:\n"
         "    words = [{'start': w.start, 'end': w.end, 'word': w.word} for w in (s.words or [])]\n"
@@ -618,7 +946,8 @@ def save_srt(segments: list[dict], out_path: Path):
 # ──────────────────────────────────────────
 # Step 2: CapCut 프로젝트 생성
 # ──────────────────────────────────────────
-def create_project(video_path: Path, segments: list[dict], project_name: str) -> Path:
+def create_project(video_path: Path, segments: list[dict], project_name: str,
+                   splits_data: list[list[str]] | None = None) -> tuple[Path, str, int]:
     project_dir = CAPCUT_PROJECTS / project_name
 
     # ── 2-0. 기존 프로젝트 자동 백업 (덮어쓰기 안전장치) ───────────────
@@ -629,58 +958,81 @@ def create_project(video_path: Path, segments: list[dict], project_name: str) ->
         except Exception as e:
             print(f"  ⚠ 백업 건너뜀: {e}")
 
-    # ── 2-1. 기존 프로젝트 삭제 후 템플릿 통째로 복사 ──────────────────
-    # 이 방법만이 CapCut이 요구하는 수십 개 필수 파일을 모두 포함할 수 있음
-    # (직접 JSON 조립 시 attachment_editing.json, draft.extra 등 누락 → 열리지 않음)
-    if project_dir.exists():
-        shutil.rmtree(project_dir)
-    shutil.copytree(str(TEMPLATE_DIR), str(project_dir))
-    print(f"  템플릿 복사: {TEMPLATE_NAME} → {project_name}")
+    # ── 2-1. 프로젝트 디렉토리 준비 ────────────────────────────────────
+    # [A] 템플릿이 있을 때: 기존 프로젝트 삭제 후 템플릿 전체 복사
+    #     (CapCut이 요구하는 attachment_editing.json 등 부수 파일을 모두 포함)
+    # [B] 템플릿이 없을 때: 기존 project_dir을 그대로 사용 (삭제·복사 없음)
+    #     → 기존 컷편집 프로젝트에 자막만 주입할 때 안전하게 동작
+    use_template = TEMPLATE_DIR.exists()
 
-    # ── 2-2. 새 Timeline UUID 생성 ─────────────────────────────────────
-    # 템플릿과 UUID를 공유하면 CapCut이 두 프로젝트를 혼동함 → 반드시 새 UUID
-    old_uuid = next(
-        e.name for e in (project_dir / "Timelines").iterdir()
-        if e.is_dir() and "-" in e.name
-    )
-    new_timeline_uuid = new_id()
-    old_tl_dir = project_dir / "Timelines" / old_uuid
-    new_tl_dir = project_dir / "Timelines" / new_timeline_uuid
-    old_tl_dir.rename(new_tl_dir)
-    print(f"  Timeline UUID: {old_uuid[:8]}… → {new_timeline_uuid[:8]}…")
+    if use_template:
+        if project_dir.exists():
+            shutil.rmtree(project_dir)
+        shutil.copytree(str(TEMPLATE_DIR), str(project_dir))
+        print(f"  템플릿 복사: {TEMPLATE_NAME} → {project_name}")
+    else:
+        if not project_dir.exists():
+            raise FileNotFoundError(
+                f"템플릿({TEMPLATE_DIR})도 없고 대상 프로젝트({project_dir})도 없음. "
+                "CapCut에서 프로젝트를 먼저 만들거나 TEMPLATE_NAME을 설정하세요."
+            )
+        print(f"  ⚠ 템플릿 없음 — 기존 프로젝트 재사용: {project_name}")
+
+    # ── 2-2. Timeline UUID 결정 ────────────────────────────────────────
+    if use_template:
+        # 템플릿 UUID를 새 UUID로 교체 (두 프로젝트 혼동 방지)
+        old_uuid = next(
+            e.name for e in (project_dir / "Timelines").iterdir()
+            if e.is_dir() and "-" in e.name
+        )
+        new_timeline_uuid = new_id()
+        old_tl_dir = project_dir / "Timelines" / old_uuid
+        new_tl_dir = project_dir / "Timelines" / new_timeline_uuid
+        old_tl_dir.rename(new_tl_dir)
+        print(f"  Timeline UUID: {old_uuid[:8]}… → {new_timeline_uuid[:8]}…")
+    else:
+        # 기존 프로젝트 UUID 그대로 유지
+        new_tl_dir = next(
+            e for e in (project_dir / "Timelines").iterdir()
+            if e.is_dir() and "-" in e.name
+        )
+        new_timeline_uuid = new_tl_dir.name
+        print(f"  Timeline UUID: {new_timeline_uuid[:8]}… (재사용)")
 
     # ── 2-3. Timelines/project.json 업데이트 ──────────────────────────
-    # CapCut이 직접 만든 프로젝트(0531) 기준으로 확인된 올바른 형식:
-    # - 외부 id ≠ main_timeline_id (별도 UUID)
-    # - color_space: -1  (0은 잘못된 값)
-    # - render_index_track_mode_on: False
-    now_us = int(time.time() * 1_000_000)
-    outer_id = new_id()  # main_timeline_id와 반드시 다른 UUID
-    proj_json = {
-        "config": {
-            "color_space": -1,
-            "render_index_track_mode_on": False,
-            "use_float_render": False
-        },
-        "create_time": now_us,
-        "id": outer_id,                    # 외부 id는 별도 UUID
-        "main_timeline_id": new_timeline_uuid,
-        "timelines": [{
+    # (템플릿 모드에서만 재생성 — 기존 프로젝트 모드에서는 유지)
+    if use_template:
+        now_us = int(time.time() * 1_000_000)
+        outer_id = new_id()  # main_timeline_id와 반드시 다른 UUID
+        proj_json = {
+            "config": {
+                "color_space": -1,
+                "render_index_track_mode_on": False,
+                "use_float_render": False
+            },
             "create_time": now_us,
-            "id": new_timeline_uuid,
-            "is_marked_delete": False,
-            "name": "타임라인 01",
-            "update_time": now_us
-        }],
-        "update_time": now_us,
-        "version": 0
-    }
-    proj_str = json.dumps(proj_json, ensure_ascii=False, indent=2)
-    (project_dir / "Timelines" / "project.json").write_text(proj_str, encoding="utf-8")
-    (project_dir / "Timelines" / "project.json.bak").write_text(proj_str, encoding="utf-8")
+            "id": outer_id,
+            "main_timeline_id": new_timeline_uuid,
+            "timelines": [{
+                "create_time": now_us,
+                "id": new_timeline_uuid,
+                "is_marked_delete": False,
+                "name": "타임라인 01",
+                "update_time": now_us
+            }],
+            "update_time": now_us,
+            "version": 0
+        }
+        proj_str = json.dumps(proj_json, ensure_ascii=False, indent=2)
+        (project_dir / "Timelines" / "project.json").write_text(proj_str, encoding="utf-8")
+        (project_dir / "Timelines" / "project.json.bak").write_text(proj_str, encoding="utf-8")
 
-    # ── 2-4. draft_info.json 수정 ──────────────────────────────────────
-    with open(TEMPLATE_DIR / "draft_info.json") as f:
+    # ── 2-4. draft_info.json 로드 ──────────────────────────────────────
+    # 템플릿 모드: TEMPLATE_DIR/draft_info.json 사용
+    # 기존 프로젝트 모드: project_dir 내 Timelines/{uuid}/draft_info.json 사용
+    draft_source = TEMPLATE_DIR / "draft_info.json" if use_template \
+                   else new_tl_dir / "draft_info.json"
+    with open(draft_source) as f:
         draft = json.load(f)
 
     video_dur_us = get_video_duration_us(video_path)
@@ -766,19 +1118,29 @@ def create_project(video_path: Path, segments: list[dict], project_name: str) ->
 
     # 자막 트랙 (기존 text material 구조를 deepcopy해서 id/content만 교체)
     # 처음부터 조립하면 누락 필드 발생 → 반드시 deepcopy 방식 사용
-    orig_text = draft["materials"]["texts"][0]
-    orig_tseg = draft["tracks"][1]["segments"][0]
+    # 템플릿/프로젝트에 texts가 없으면 DEFAULT_TEXT_MATERIAL (서울한강체 B) 사용
+    _texts = draft["materials"].get("texts", [])
+    orig_text = _texts[0] if _texts else copy.deepcopy(DEFAULT_TEXT_MATERIAL)
+    _track1_segs = draft["tracks"][1]["segments"] if len(draft["tracks"]) > 1 else []
+    orig_tseg = _track1_segs[0] if _track1_segs else copy.deepcopy(DEFAULT_TEXT_SEGMENT)
 
     text_materials = []
     text_segments  = []
 
-    # 모든 자막을 단어 단위로 분리한 뒤, 인접 자막의 시간 겹침 제거
-    all_parts = []
-    for seg in segments:
-        if not seg.get("text", "").strip():
-            continue
-        parts = split_with_word_sync(seg, max_chars=18)
-        all_parts.extend(parts)
+    # 모든 자막을 분리한 뒤, 인접 자막의 시간 겹침 제거
+    # splits_data가 있으면 AI 분할 결과를, 없으면 기본 글자 수 분할 사용
+    if splits_data is not None:
+        all_parts = split_by_splits(segments, splits_data)
+        print(f"  AI 분할 적용: {len(all_parts)}개 자막 파트")
+    else:
+        all_parts = []
+        for seg in segments:
+            if not seg.get("text", "").strip():
+                continue
+            parts = split_with_word_sync(seg, max_chars=18)
+            all_parts.extend(parts)
+        # 컷편집 이음매에서 나뉜 미완성 문장을 cross-segment 병합
+        all_parts = merge_cross_segment_parts(all_parts)
     all_parts = remove_overlaps(all_parts, min_gap=0.02)
 
     render_idx = 0
@@ -817,11 +1179,26 @@ def create_project(video_path: Path, segments: list[dict], project_name: str) ->
                 "target_timerange": {"start": part_start_us, "duration": dur_us},
                 "render_index": 14000 + render_idx,
             })
+            # 자막 위치를 항상 하단 고정 (템플릿/기본값과 무관하게 일관된 위치 보장)
+            # y = -0.74: 화면 하단 (CapCut 좌표계: -1=최하단, 0=중앙, 1=최상단)
+            new_tseg.setdefault("clip", {}).setdefault("transform", {})
+            new_tseg["clip"]["transform"]["y"] = -0.7407407407407407
             text_segments.append(new_tseg)
             render_idx += 1
 
-    text_track = copy.deepcopy(draft["tracks"][1])
-    text_track["id"] = new_id()
+    # 자막 트랙 구성 — tracks[1]이 없으면 기본 text 트랙 구조로 대체
+    if len(draft["tracks"]) > 1:
+        text_track = copy.deepcopy(draft["tracks"][1])
+        text_track["id"] = new_id()
+    else:
+        text_track = {
+            "id": new_id(),
+            "attribute": 0,
+            "flag": 0,
+            "is_default_name": True,
+            "name": "",
+            "type": "text",
+        }
     text_track["segments"] = text_segments
 
     # materials 교체
@@ -1005,6 +1382,10 @@ def main():
                         help="Whisper 모델 (tiny: 가장 빠름~large-v3: 가장 정확). 기본 small.")
     parser.add_argument("--beam-size",     type=int, default=1,
                         help="Whisper beam_size (클수록 정확, 느림). 기본 1.")
+    parser.add_argument("--segments",      default=None,
+                        help="auto-edit 결과 segments JSON 경로 (지정 시 편집 타임라인 기준 오디오 추출 후 전사)")
+    parser.add_argument("--splits",        default=None,
+                        help="subtitle-splitter 분할 결과 JSON 경로 (기본: 없음, 있으면 AI 분할 사용)")
     args = parser.parse_args()
 
     video_path   = Path(args.video).resolve()
@@ -1014,14 +1395,41 @@ def main():
         print(f"오류: 파일 없음 — {video_path}", file=sys.stderr)
         sys.exit(1)
     if not TEMPLATE_DIR.exists():
-        print(f"오류: 템플릿 프로젝트 없음 — {TEMPLATE_DIR}", file=sys.stderr)
-        print("      TEMPLATE_NAME 상수를 실제 존재하는 프로젝트명으로 변경하세요.")
-        sys.exit(1)
+        # 템플릿이 없어도 기존 CapCut 프로젝트가 있으면 그대로 자막 주입 가능
+        # (서울한강체 B 기본 스타일 사용)
+        project_name = args.project_name or video_path.stem
+        target_dir = CAPCUT_PROJECTS / project_name
+        if not target_dir.exists():
+            print(f"오류: 템플릿({TEMPLATE_DIR})도 없고 대상 프로젝트({target_dir})도 없음.",
+                  file=sys.stderr)
+            print("      CapCut에서 프로젝트를 먼저 만들거나 TEMPLATE_NAME을 설정하세요.")
+            sys.exit(1)
+        print(f"⚠  템플릿 없음 — 기존 프로젝트에 기본 스타일(서울한강체 B)로 자막 주입: {project_name}")
+
+    # 편집 타임라인 segments 로드 (--segments 지정 시)
+    edit_segments: list[list[float]] | None = None
+    extracted_audio: Path | None = None
+    if args.segments:
+        seg_path = Path(args.segments).resolve()
+        if not seg_path.exists():
+            print(f"오류: segments 파일 없음 — {seg_path}", file=sys.stderr)
+            sys.exit(1)
+        with open(seg_path, encoding="utf-8") as f:
+            edit_segments = json.load(f)
+        print(f"\n[0/3] 편집 타임라인 오디오 추출 ({len(edit_segments)}개 구간)")
+        extracted_audio = video_path.with_name(video_path.stem + "_edited_audio.wav")
+        extract_audio_from_segments(video_path, edit_segments, extracted_audio)
 
     print("\n[1/3] 음성 인식")
     srt_cache = video_path.with_suffix(".srt")
     verified_srt = video_path.with_name(video_path.stem + "_verified.srt")
     words_cache = video_path.with_name(video_path.stem + "_words.json")  # 단어 타임스탬프 캐시
+
+    # --segments가 지정되면 캐시 무효화 (편집 기준 재전사)
+    if edit_segments is not None:
+        srt_cache    = video_path.with_name(video_path.stem + "_edited.srt")
+        verified_srt = video_path.with_name(video_path.stem + "_edited_verified.srt")
+        words_cache  = video_path.with_name(video_path.stem + "_edited_words.json")
 
     # 단어 타임스탬프 로드/생성 (음성 ↔ 자막 정확한 싱크용)
     word_segments = None
@@ -1038,7 +1446,8 @@ def main():
         print("  캐시된 SRT + 단어 타임스탬프 발견 — Whisper 생략")
         segments = load_srt(srt_cache)
     else:
-        segments = transcribe(video_path, model_name=args.model, beam_size=args.beam_size)
+        segments = transcribe(video_path, model_name=args.model, beam_size=args.beam_size,
+                              audio_path=extracted_audio)
         save_srt(segments, srt_cache)
         save_word_timestamps(segments, words_cache)
         word_segments = segments  # 방금 추출했으므로 동일
@@ -1065,9 +1474,25 @@ def main():
         print(f"      python3 scripts/add_subtitles.py {video_path.name} --srt {verified_srt.name}")
         print("  → 검증 없이 진행합니다 (--no-verify 또는 검증된 SRT가 있으면 이 메시지 생략)")
 
+    # subtitle_input.json 덤프 (subtitle-splitter 서브에이전트용)
+    dump_subtitle_input(segments)
+
+    # --splits: AI 분할 결과 로드
+    splits_data: list[list[str]] | None = None
+    if args.splits:
+        splits_path = Path(args.splits)
+        if splits_path.exists():
+            with open(splits_path, encoding="utf-8") as _f:
+                splits_data = json.load(_f)
+            print(f"  AI 분할 결과 로드: {splits_path.name} ({len(splits_data)}개 세그먼트)")
+        else:
+            print(f"  ⚠ splits 파일 없음 ({splits_path}) — 기본 분할 사용")
+
     print(f"\n[2/3] CapCut 프로젝트 생성: {project_name}")
     quit_capcut()
-    project_dir, project_id, duration_us = create_project(video_path, segments, project_name)
+    project_dir, project_id, duration_us = create_project(
+        video_path, segments, project_name, splits_data=splits_data
+    )
 
     print("\n[3/3] 프로젝트 등록")
     register_project(project_dir, project_id, project_name, duration_us, video_path)
