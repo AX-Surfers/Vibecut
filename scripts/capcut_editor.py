@@ -341,11 +341,10 @@ def write_4_files(project_dir: Path, timeline_uuid: str | None, updated_draft: d
 
 def main():
     parser = argparse.ArgumentParser(description="CapCut 자동 컷편집")
-    parser.add_argument("segments", help="편집 구간 JSON 파일 경로 [[start_sec, end_sec], ...]")
     parser.add_argument(
-        "--segments2",
-        default=None,
-        help="두 번째 영상 편집 구간 JSON 파일 경로 (프로젝트에 영상이 2개인 경우)"
+        "segments",
+        nargs="+",
+        help="편집 구간 JSON 파일 경로 [[start_sec, end_sec], ...] (여러 개 지정 시 순서대로 각 영상에 적용)"
     )
     parser.add_argument(
         "--project",
@@ -386,10 +385,7 @@ def main():
     videos = draft["materials"]["videos"]
     orig_segments_list = draft["tracks"][0]["segments"]
 
-    # 편집 구간 파일 목록 결정
-    seg_files = [args.segments]
-    if args.segments2:
-        seg_files.append(args.segments2)
+    seg_files = args.segments
 
     num = min(len(seg_files), len(videos), len(orig_segments_list))
 
