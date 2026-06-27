@@ -62,20 +62,6 @@ path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
 print('  known_marketplaces.json 업데이트 완료')
 EOF
 
-# ── create official-compatible directory structure ────────────────────────────
-# Claude Code는 marketplaces/<name>/plugins/<plugin>/skills/ 구조를 기대합니다.
-# Vibecut은 skills/이 루트에 있으므로 심볼릭 링크로 연결합니다.
-
-PLUGIN_DIR="${INSTALL_DIR}/plugins/vibecut"
-mkdir -p "${PLUGIN_DIR}"
-
-[ -L "${PLUGIN_DIR}/plugin.json" ] || \
-    ln -sf "${INSTALL_DIR}/.claude-plugin/plugin.json" "${PLUGIN_DIR}/plugin.json"
-[ -L "${PLUGIN_DIR}/skills" ] || \
-    ln -sf "${INSTALL_DIR}/skills" "${PLUGIN_DIR}/skills"
-[ -L "${PLUGIN_DIR}/agents" ] || \
-    ln -sf "${INSTALL_DIR}/agents" "${PLUGIN_DIR}/agents"
-
 # ── done ─────────────────────────────────────────────────────────────────────
 
 ok "설치 완료!"
