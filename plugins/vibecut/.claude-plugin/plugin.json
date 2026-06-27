@@ -18,5 +18,15 @@
     "subtitles",
     "automation",
     "vibecut"
+  ],
+  "skills": [
+    "./skills/vibecut-auto-edit/",
+    "./skills/vibecut-add-subtitles/",
+    "./skills/vibecut-youtube-description/"
+  ],
+  "agents": [
+    "./agents/capcut/",
+    "./agents/subtitle-splitter/",
+    "./agents/subtitle-verifier/"
   ]
 }
